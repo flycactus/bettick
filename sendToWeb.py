@@ -9,7 +9,7 @@ import os
 def sendToWeb(file='meteo2.json'):
 	id=open('../id','r')
 	idStr = id.read()
-	idStr.split(':')
+	idStr = idStr.split(':')
 	ftp = FTP(idStr[2])     # connect to host, default port
 	ftp.login(idStr[0],idStr[1])   
 

@@ -11,11 +11,49 @@ import jsonParser as json
 import sendToWeb as web
 from shutil import copyfile
 
-def checksum(flag,dataNb):
-	if(np.sum(flag)%2 == dataNb%2):
+
+class sensorDataClass:
+	def __init__(self):
+		self.dayTemperature = 0
+		self.dayHumidity = 0
+		self.earthHumidity = 0
+		self.randomId = 0
+		self.checksum = 0
+		
+	def reinit(self):
+		self.dayTemperature = 0
+		self.dayHumidity = 0
+		self.earthHumidity = 0
+		self.randomId = 0
+		self.checksum = 0
+	
+	def disp(self):
+		print('temp:{}*C\nhumidity:{}%\nrandomId:{}\nearthHum:{}\nchecksum:{}'.format(self.dayTemperature,self.dayHumidity,self.earthHumidity,self.randomId,self.checksum))
+
+		
+def checksumCmp(sensorData):
+	sum = sensorData.dayTemperature + sensorData.dayHumidity + sensorData.randomId + sensorData.earthHumidity
+	if(sum == sensorData.checksum):
 		return 1
 	else:
 		return 0
+		
+def decode(received_value,sensorData):
+    valid = 0
+    messageNb = int(received_value[0])
+   
+    if messageNb == 1:
+		sensorData.dayTemperature = int(received_value[1:4])
+    if messageNb == 2:
+        sensorData.dayHumidity = int(received_value[1:3])
+        sensorData.randomId = int(received_value[3:4])
+    if messageNb == 3:
+		sensorData.earthHumidity = int(received_value[1:4])
+    if messageNb == 4:
+		sensorData.checksum = int(received_value[1:4])
+		if(checksumCmp(sensorData)):
+			valid=1
+    return sensorData,valid
 	
 SLEEPING_TIME = 140
 
@@ -29,7 +67,9 @@ dateFile = open('dayfile.day','r')
 today = dateFile.readline()
 dateFile.close()
 dataFileName = 'dossierMeteo/'+today+'_meteo.bet'
- 
+
+# initialise la classe
+sensorData = sensorDataClass()
 flag = np.zeros(6)
 num=0
 while True:
@@ -46,56 +86,26 @@ while True:
 	if receiver.available():
 		received_value = receiver.getReceivedValue()
 		if received_value:
-			print received_value
-			##receive temperature
-			if received_value == 1:
-				flag[0]=1
-					
-				
-			elif received_value != 1 and flag[0]==1 and flag[1]==0:
-				dayTemperature = received_value				
-				flag[1]=1
-
-			##receive humidity
-			elif received_value == 2:
-				dataNb = 2
-				flag[dataNb]=1
-				if not checksum(flag,dataNb):
-					flag = np.zeros(6)
-					
-			elif received_value != 2 and flag[2]==1 and flag[3]==0:
-				dayHumidity = received_value
-				flag[3]=1				
-				# time.sleep(SLEEPING_TIME)
-				
-			##receive earth humidity
-			elif received_value == 3:
-				dataNb = 3
-				flag[dataNb]=1
-				if not checksum(flag,dataNb):
-					flag = np.zeros(6)
-					
-			elif received_value != 3 and flag[4]==1 and flag[5]==0:
-				earthHumidity = received_value
-				flag[5]=1				
-				time.sleep(SLEEPING_TIME)
+			received_value=str(received_value)
+			# print '{}'.format(received_value)
+			[sensorData,valid] = decode(received_value,sensorData)
 			
 			
-			if np.sum(flag) == 6:
-				num = num+1
-				flag = np.zeros(6)
+			
+			if valid:
+				# sensorData.disp()
 				timeArray = time.time()
 				dataFile = open(dataFileName,'a+')
-				dataFormat = '{}:{}:{}:{}\n'.format(timeArray,dayTemperature,dayHumidity,earthHumidity)
+				dataFormat = '{}:{}:{}:{}\n'.format(timeArray,sensorData.dayTemperature,sensorData.dayHumidity,sensorData.earthHumidity)
 				dataFile.write(dataFormat)
 				dataFile.close()
 				json.parseData()
-				
+				sensorData.reinit()
 				try:
 					web.sendToWeb('meteo.json')
-				except:
+				except Exception as e:
 					log=open('errorLog.log','a+')
-					log.write(time.strftime('%m-%d, %H:%M',time.localtime())+'Error sending json to web\n')
+					log.write(time.strftime('%m-%d, %H:%M',time.localtime())+' - Error sending json to web : {}\n'.format(e))
 					log.close()
 				# print 'iteration {}'.format(num)
 				# print dataFormat
