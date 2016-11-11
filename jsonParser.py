@@ -3,7 +3,7 @@ import time
 import numpy as np
 
 def parseData():
-	AVG_SIZE = 1
+	AVG_SIZE = 25
 	# OFFLIMIT = 0.15
 	OFFLIMIT = 0.1
 	###Open meteo data file

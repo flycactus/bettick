@@ -10,6 +10,7 @@ def sendToWeb(file='meteo2.json'):
 	id=open('../id','r')
 	idStr = id.read()
 	idStr = idStr.split(':')
+	# print idStr
 	ftp = FTP(idStr[2])     # connect to host, default port
 	ftp.login(idStr[0],idStr[1])   
 
@@ -28,4 +29,4 @@ def upload(ftp, file):
         ftp.storbinary("STOR " + file, open(file, "rb"), 1024)
 		
 		
-# sendToWeb('meteo.json')
+sendToWeb('meteo.json')

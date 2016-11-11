@@ -10,6 +10,7 @@ import time
 import jsonParser as json
 import sendToWeb as web
 from shutil import copyfile
+import sys
 
 
 class sensorDataClass:
@@ -19,6 +20,9 @@ class sensorDataClass:
 		self.earthHumidity = 0
 		self.randomId = 0
 		self.checksum = 0
+		self.sum = 0
+		self.valid = 0
+		self.histo = [0,0,0,0]
 		
 	def reinit(self):
 		self.dayTemperature = 0
@@ -26,11 +30,27 @@ class sensorDataClass:
 		self.earthHumidity = 0
 		self.randomId = 0
 		self.checksum = 0
+		
+	def reinitStat(self):
+		self.sum = 0
+		self.valid = 0
+		self.histo = [0,0,0,0]
 	
 	def disp(self):
-		print('temp:{}*C\nhumidity:{}%\nrandomId:{}\nearthHum:{}\nchecksum:{}'.format(self.dayTemperature,self.dayHumidity,self.earthHumidity,self.randomId,self.checksum))
+		print('temp:{}*C\nhumidity:{}%\nrandomId:{}\nearthHum:{}\nchecksum:{}'.format(self.dayTemperature,self.dayHumidity,self.randomId,self.earthHumidity,self.checksum))
+		print(time.strftime('%H:%M:%S',time.localtime())+'\n')
 
-		
+def saveStat(summ,valid,histo):
+	statFile = open('./stat/stat_'+time.strftime('%m-%d',time.localtime())+'.st','w')
+	statFile.write('#Trames Totales                 : {}\n'.format(summ))
+	statFile.write('#Trames Valides                 : {} ({:.2f} %)\n'.format(valid,float(valid)/float(summ)*100))
+	statFile.write('#Trames 1 - Temperature         : {} (x{:.2f})\n'.format(histo[0],float(histo[0])/float(summ)))
+	statFile.write('#Trames 2 - Humidite & random Id: {} (x{:.2f})\n'.format(histo[1],float(histo[1])/float(summ)))
+	statFile.write('#Trames 3 - Humidite terre      : {} (x{:.2f})\n'.format(histo[2],float(histo[2])/float(summ)))
+	statFile.write('#Trames 4 - Checksum            : {} (x{:.2f})\n'.format(histo[3],float(histo[3])/float(summ)))
+	statFile.close()
+
+	
 def checksumCmp(sensorData):
 	sum = sensorData.dayTemperature + sensorData.dayHumidity + sensorData.randomId + sensorData.earthHumidity
 	if(sum == sensorData.checksum):
@@ -44,23 +64,42 @@ def decode(received_value,sensorData):
    
     if messageNb == 1:
 		sensorData.dayTemperature = int(received_value[1:4])
+		# sensorData.histo[0] = sensorData.histo[0]+1
     if messageNb == 2:
         sensorData.dayHumidity = int(received_value[1:3])
         sensorData.randomId = int(received_value[3:4])
+        # sensorData.histo[1] = sensorData.histo[1]+1
     if messageNb == 3:
 		sensorData.earthHumidity = int(received_value[1:4])
+		# sensorData.histo[2] = sensorData.histo[2]+1
     if messageNb == 4:
 		sensorData.checksum = int(received_value[1:4])
-		if(checksumCmp(sensorData)):
-			valid=1
+		# sensorData.histo[3] = sensorData.histo[3]+1
+		if sensorData.dayTemperature + sensorData.dayHumidity + sensorData.earthHumidity != 0:
+			# sensorData.disp()
+			sensorData.sum = sensorData.sum + 1
+			if(checksumCmp(sensorData)):
+				valid=1
+				sensorData.valid = sensorData.valid +1
+				saveStat(sensorData.sum,sensorData.valid,sensorData.histo)
+				# print "==> valide {}/{} ({} %)".format(sensorData.valid,sensorData.sum,float(sensorData.valid)/float(sensorData.sum)*100)
+			else:
+				sensorData.reinit()
+		else:
+			sensorData.reinit()
+			
     return sensorData,valid
 	
-SLEEPING_TIME = 140
+SLEEPING_TIME = 285
 
 receiver = RCSwitchReceiver()
 receiver.enableReceive(2)
 
 ################ Initialization ###################
+
+# initialisation des erreurs
+fsock = open('errorLog.log', 'a')               
+sys.stderr = fsock       
 
 # initialise la date
 dateFile = open('dayfile.day','r')
@@ -77,22 +116,32 @@ while True:
 		#create archive json file
 		jsonFileName='dossierMeteo/'+today+'_meteo.json'
 		copyfile('meteo.json', jsonFileName)
-		
+		sensorData.reinitStat()
 		#create new bet file
 		today = time.strftime('%m-%d',time.localtime()) 
 		dataFileName = 'dossierMeteo/'+today+'_meteo.bet'
 
 		
 	if receiver.available():
+		
 		received_value = receiver.getReceivedValue()
+
+			
 		if received_value:
+		
+			#check if the received strhas the good length
 			received_value=str(received_value)
+
+			if len(received_value)!=4:
+				received_value = '0000'
+			trameNb = int(received_value[0])
+			sensorData.histo[trameNb-1] = sensorData.histo[trameNb-1]+1
 			# print '{}'.format(received_value)
 			[sensorData,valid] = decode(received_value,sensorData)
 			
 			
 			
-			if valid:
+			if valid: 
 				# sensorData.disp()
 				timeArray = time.time()
 				dataFile = open(dataFileName,'a+')
@@ -107,6 +156,9 @@ while True:
 					log=open('errorLog.log','a+')
 					log.write(time.strftime('%m-%d, %H:%M',time.localtime())+' - Error sending json to web : {}\n'.format(e))
 					log.close()
+				# print('sleep '+time.strftime('%H:%M:%S',time.localtime()))
+				time.sleep(SLEEPING_TIME)
+				# print('fin de sleep '+time.strftime('%H:%M:%S',time.localtime())+'\n')
 				# print 'iteration {}'.format(num)
 				# print dataFormat
 				
