@@ -75,6 +75,7 @@ def decode(received_value,sensorData):
     if messageNb == 4:
 		sensorData.checksum = int(received_value[1:4])
 		# sensorData.histo[3] = sensorData.histo[3]+1
+		# print('{}+{}+{} = {}'.format(sensorData.dayTemperature,sensorData.dayHumidity,sensorData.earthHumidity,sensorData.dayTemperature + sensorData.dayHumidity + sensorData.earthHumidity))
 		if sensorData.dayTemperature + sensorData.dayHumidity + sensorData.earthHumidity != 0:
 			# sensorData.disp()
 			sensorData.sum = sensorData.sum + 1
@@ -91,7 +92,7 @@ def decode(received_value,sensorData):
     return sensorData,valid
 	
 SLEEPING_TIME = 285
-
+ 
 receiver = RCSwitchReceiver()
 receiver.enableReceive(2)
 
@@ -112,6 +113,7 @@ sensorData = sensorDataClass()
 flag = np.zeros(6)
 num=0
 while True:
+	
 	if isNewDay():
 		#create archive json file
 		jsonFileName='dossierMeteo/'+today+'_meteo.json'
@@ -131,12 +133,10 @@ while True:
 		
 			#check if the received strhas the good length
 			received_value=str(received_value)
-
-			if len(received_value)!=4:
-				received_value = '0000'
+			if len(received_value)<4: 
+				received_value = '9999'
 			trameNb = int(received_value[0])
 			sensorData.histo[trameNb-1] = sensorData.histo[trameNb-1]+1
-			# print '{}'.format(received_value)
 			[sensorData,valid] = decode(received_value,sensorData)
 			
 			
