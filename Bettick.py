@@ -5,12 +5,14 @@ Main routine of Bettick, home automation bot
 
 from pi_switch import RCSwitchReceiver
 from passingDay import *
+import liveParameter as param
 import numpy as np
 import time
 import jsonParser as json
 import sendToWeb as web
 from shutil import copyfile
 import sys
+import fileTimeStamp as fts
 
 
 class sensorDataClass:
@@ -39,6 +41,8 @@ class sensorDataClass:
 	def disp(self):
 		print('temp:{}*C\nhumidity:{}%\nrandomId:{}\nearthHum:{}\nchecksum:{}'.format(self.dayTemperature,self.dayHumidity,self.randomId,self.earthHumidity,self.checksum))
 		print(time.strftime('%H:%M:%S',time.localtime())+'\n')
+		
+
 
 def saveStat(summ,valid,histo):
 	statFile = open('./stat/stat_'+time.strftime('%m-%d',time.localtime())+'.st','w')
@@ -91,8 +95,18 @@ def decode(received_value,sensorData):
 			
     return sensorData,valid
 	
-SLEEPING_TIME = 285
- 
+	
+def sendToRaspiWeb(file):
+	try:
+		web.sendToWeb(file)
+	except Exception as e:
+		log=open('errorLog.log','a+')
+		log.write(time.strftime('%m-%d, %H:%M',time.localtime())+' - Error sending json to web : {}\n'.format(e))
+		log.close()
+	# print('sleep '+time.strftime('%H:%M:%S',time.localtime()))
+	time.sleep(SLEEPING_TIME)
+	
+
 receiver = RCSwitchReceiver()
 receiver.enableReceive(2)
 
@@ -101,6 +115,10 @@ receiver.enableReceive(2)
 # initialisation des erreurs
 fsock = open('errorLog.log', 'a')               
 sys.stderr = fsock       
+
+# initialisation des parametres
+parameter = param.ParameterClass()
+SLEEPING_TIME = parameter.sleepTime
 
 # initialise la date
 dateFile = open('dayfile.day','r')
@@ -117,15 +135,28 @@ while True:
 	if isNewDay():
 		#create archive json file
 		jsonFileName='dossierMeteo/'+today+'_meteo.json'
-		copyfile('meteo.json', jsonFileName)
+		copyfile('meteo.json', jsonFileName) 
 		sensorData.reinitStat()
-		#create new bet file
-		today = time.strftime('%m-%d',time.localtime()) 
-		dataFileName = 'dossierMeteo/'+today+'_meteo.bet'
+		
+		#compute last week file
+		fts.getTimeStamp()
+		NbofDays = 7
+		TimePrecision = 10   
+		fts.NdaysDataMean(NbofDays,today+'_meteo.bet',TimePrecision)
+		avgFileNameBet = 'dossierMeteo//{}DaysAvg_meteo.abet'.format(NbofDays)
+		avgFileNameJson= '{}DaysAvg_meteo.json'.format(NbofDays)
+		json.parseData(avgFileNameBet,avgFileNameJson,parameter)		
+		sendToRaspiWeb(avgFileNameJson)
 
 		
-	if receiver.available():
+		#create new bet file
+		today = time.strftime('%m-%d',time.localtime()) 
+		dataFileName = 'dossierMeteo//'+today+'_meteo.bet'
 		
+		
+	
+	if receiver.available():
+		parameter.update()
 		received_value = receiver.getReceivedValue()
 
 			
@@ -136,28 +167,27 @@ while True:
 			if len(received_value)<4: 
 				received_value = '9999'
 			trameNb = int(received_value[0])
-			sensorData.histo[trameNb-1] = sensorData.histo[trameNb-1]+1
+			if trameNb>0 and trameNb<=4:	
+				sensorData.histo[trameNb-1] = sensorData.histo[trameNb-1]+1
 			[sensorData,valid] = decode(received_value,sensorData)
 			
 			
 			
 			if valid: 
-				# sensorData.disp()
+				if parameter.disp==1:
+					sensorData.disp()
 				timeArray = time.time()
 				dataFile = open(dataFileName,'a+')
 				dataFormat = '{}:{}:{}:{}\n'.format(timeArray,sensorData.dayTemperature,sensorData.dayHumidity,sensorData.earthHumidity)
 				dataFile.write(dataFormat)
 				dataFile.close()
-				json.parseData()
+				# jsonize today file
+				json.parseData(dataFileName,'meteo.json',parameter)
 				sensorData.reinit()
-				try:
-					web.sendToWeb('meteo.json')
-				except Exception as e:
-					log=open('errorLog.log','a+')
-					log.write(time.strftime('%m-%d, %H:%M',time.localtime())+' - Error sending json to web : {}\n'.format(e))
-					log.close()
-				# print('sleep '+time.strftime('%H:%M:%S',time.localtime()))
-				time.sleep(SLEEPING_TIME)
+				
+				# send to web
+				sendToRaspiWeb('meteo.json')
+				
 				# print('fin de sleep '+time.strftime('%H:%M:%S',time.localtime())+'\n')
 				# print 'iteration {}'.format(num)
 				# print dataFormat

@@ -29,4 +29,4 @@ def upload(ftp, file):
         ftp.storbinary("STOR " + file, open(file, "rb"), 1024)
 		
 		
-sendToWeb('meteo.json')
+# sendToWeb('meteo.json')

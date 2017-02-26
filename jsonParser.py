@@ -2,19 +2,20 @@ import json
 import time
 import numpy as np
 
-def parseData():
-	AVG_SIZE = 25
+
+def parseData(betFile,jsonFileName,parameter):
+	AVG_SIZE = parameter.avgSize
 	# OFFLIMIT = 0.15
-	OFFLIMIT = 0.1
-	###Open meteo data file
-	dayFile = open('dayfile.day','r')
-	lastDay = dayFile.readline()
-	dayFile.close()
-	meteoFileName = 'dossierMeteo/'+lastDay+'_meteo.bet'
-	meteoFile = open(meteoFileName,'r')
+	OFFLIMIT = parameter.offlimit 
+	##Open meteo data file
+	# dayFile = open('dayfile.day','r')
+	# lastDay = dayFile.readline()
+	# dayFile.close()  
+	# meteoFileName = 'dossierMeteo/'+lastDay+'_meteo.bet'
+	meteoFile = open(betFile,'r')
 
 	### Extract meteo data
-	jsonFile = open('meteo.json','w')
+	jsonFile = open(jsonFileName,'w')
 	datadict = {}
 	meteoData = meteoFile.readlines()
 	time = np.zeros(len(meteoData))
@@ -67,7 +68,7 @@ def parseData():
 			else:
 				hum[i] = avgHum
 
-			if np.abs(dataTemp[3]-avgEarth)<3*stdEarth:  
+			if np.abs(dataTemp[3]-avgEarth)<3*stdEarth:   
 				earth[i] = dataTemp[3]
 			else:
 				earth[i] = avgEarth
@@ -75,20 +76,21 @@ def parseData():
 		if i<AVG_SIZE-1: 
 			# print "i:"+str(i)
 			for point in range(int(np.floor(i/2))+1):
-				tempPrint[i-point] = np.average(temp[i-point-i/2:i+1])
+				tempPrint[i-point] = round(np.average(temp[i-point-i/2:i+1]),3)
 				
-				humPrint[i-point] = np.average(hum[i-point-i/2:i+1])
-				earthPrint[i-point] = np.average(earth[i-point-i/2:i+1])
+				humPrint[i-point] = round(np.average(hum[i-point-i/2:i+1]),3)
+				earthPrint[i-point] = round(np.average(earth[i-point-i/2:i+1]),3)
 				# print "{} = [{}:{}] = {}".format(i-point,i-point-i/2,i-point+AVG_SIZE/2,tempPrint[i-point])
 
 		elif i>=AVG_SIZE-1:
-			# print "i:"+str(i)
+			# print "i:"+str(i) 
 			for point in range(AVG_SIZE/2):
 				# if i<25:
 					# print "[{}:{}]".format(i-point-AVG_SIZE/2,i-point+AVG_SIZE/2)
-				tempPrint[i-point] = np.average(temp[i-point-AVG_SIZE/2:i-point+AVG_SIZE/2])
-				humPrint[i-point] = np.average(hum[i-point-AVG_SIZE/2:i-point+AVG_SIZE/2])
-				earthPrint[i-point] = np.average(earth[i-point-AVG_SIZE/2:i-point+AVG_SIZE/2])
+				tempPrint[i-point] = round(np.average(temp[i-point-AVG_SIZE/2:i-point+AVG_SIZE/2]),3)
+				# print(tempPrint[i-point])
+				humPrint[i-point] = round(np.average(hum[i-point-AVG_SIZE/2:i-point+AVG_SIZE/2]),3)
+				earthPrint[i-point] = round(np.average(earth[i-point-AVG_SIZE/2:i-point+AVG_SIZE/2]),3)
 		
 		
 	for i in range(len(meteoData)):
