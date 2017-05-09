@@ -6,6 +6,7 @@ Main routine of Bettick, home automation bot
 from pi_switch import RCSwitchReceiver
 from passingDay import *
 import liveParameter as param
+import camera as cam
 import numpy as np
 import time
 import jsonParser as json
@@ -96,15 +97,15 @@ def decode(received_value,sensorData):
     return sensorData,valid
 	
 	
-def sendToRaspiWeb(file):
+def sendToRaspiWeb(fileName,filePath):
 	try:
-		web.sendToWeb(file)
+		web.sendToWeb(fileName,filePath) 
 	except Exception as e:
 		log=open('errorLog.log','a+')
 		log.write(time.strftime('%m-%d, %H:%M',time.localtime())+' - Error sending json to web : {}\n'.format(e))
 		log.close()
 	# print('sleep '+time.strftime('%H:%M:%S',time.localtime()))
-	time.sleep(SLEEPING_TIME)
+
 	
 
 receiver = RCSwitchReceiver()
@@ -130,6 +131,10 @@ dataFileName = 'dossierMeteo/'+today+'_meteo.bet'
 sensorData = sensorDataClass()
 flag = np.zeros(6)
 num=0
+
+# initialise la camera
+photoTaken_flag=0
+
 while True:
 	
 	if isNewDay():
@@ -146,7 +151,7 @@ while True:
 		avgFileNameBet = 'dossierMeteo//{}DaysAvg_meteo.abet'.format(NbofDays)
 		avgFileNameJson= '{}DaysAvg_meteo.json'.format(NbofDays)
 		json.parseData(avgFileNameBet,avgFileNameJson,parameter)		
-		sendToRaspiWeb(avgFileNameJson)
+		sendToRaspiWeb(avgFileNameJson,'')
 
 		
 		#create new bet file
@@ -158,10 +163,11 @@ while True:
 	if receiver.available():
 		parameter.update()
 		received_value = receiver.getReceivedValue()
-
-			
+	
 		if received_value:
-		
+			##take picture
+			[fileName,filePath,photoTaken_flag] = cam.timeLapse_Photo(photoTaken_flag)
+			
 			#check if the received strhas the good length
 			received_value=str(received_value)
 			if len(received_value)<4: 
@@ -173,6 +179,7 @@ while True:
 			
 			
 			
+			
 			if valid: 
 				if parameter.disp==1:
 					sensorData.disp()
@@ -181,13 +188,21 @@ while True:
 				dataFormat = '{}:{}:{}:{}\n'.format(timeArray,sensorData.dayTemperature,sensorData.dayHumidity,sensorData.earthHumidity)
 				dataFile.write(dataFormat)
 				dataFile.close()
-				# jsonize today file
+				## jsonize today file
 				json.parseData(dataFileName,'meteo.json',parameter)
 				sensorData.reinit()
 				
-				# send to web
-				sendToRaspiWeb('meteo.json')
+				## send to web
+				sendToRaspiWeb('meteo.json','')
 				
+				## GIF
+				now = time.strftime('%H',time.localtime()) 
+				if now == '21':					
+					cam.makeGif()
+					sendToRaspiWeb('animation.gif','') 
+					sendToRaspiWeb('animation12.gif','')
+			 
+				time.sleep(SLEEPING_TIME)
 				# print('fin de sleep '+time.strftime('%H:%M:%S',time.localtime())+'\n')
 				# print 'iteration {}'.format(num)
 				# print dataFormat

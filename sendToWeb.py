@@ -6,7 +6,7 @@ Send data to raspi.sarno.fr
 from ftplib import FTP
 import os
 
-def sendToWeb(file='meteo2.json'):
+def sendToWeb(fileName,filePath):
 	id=open('../id','r')
 	idStr = id.read()
 	idStr = idStr.split(':')
@@ -17,16 +17,17 @@ def sendToWeb(file='meteo2.json'):
 	ftp.cwd('www')            
 	# ftp.retrlines('LIST')           # list directory contents
 	ftp.cwd('raspi') 
-	upload(ftp,file)
+	upload(ftp,fileName,filePath)
 	# print 'transfert fini'
 	ftp.quit()
 
-def upload(ftp, file):
-    ext = os.path.splitext(file)[1]
+def upload(ftp, fileName,filePath):
+    ext = os.path.splitext(fileName)[1]
     if ext in (".txt", ".htm", ".html"): 
-        ftp.storlines("STOR " + file, open(file))
+        ftp.storlines("STOR " + fileName, open(filePath+fileName))
     else:
-        ftp.storbinary("STOR " + file, open(file, "rb"), 1024)
+        ftp.storbinary("STOR " + fileName, open(filePath+fileName, "rb"), 1024)
 		
 		
-# sendToWeb('meteo.json')
+
+# sendToWeb('17-04-11_14.jpeg','/home/cactus/bettick/photo/')
