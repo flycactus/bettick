@@ -11,6 +11,7 @@ import numpy as np
 import time
 import jsonParser as json
 import sendToWeb as web
+import dayAverage
 from shutil import copyfile
 import sys
 import fileTimeStamp as fts
@@ -147,12 +148,16 @@ while True:
 		fts.getTimeStamp()
 		NbofDays = 7
 		TimePrecision = 10   
-		fts.NdaysDataMean(NbofDays,today+'_meteo.bet',TimePrecision)
+		oneWeekFileList = fts.NdaysDataMean(NbofDays,today+'_meteo.bet',TimePrecision)
 		avgFileNameBet = 'dossierMeteo//{}DaysAvg_meteo.abet'.format(NbofDays)
 		avgFileNameJson= '{}DaysAvg_meteo.json'.format(NbofDays)
 		json.parseData(avgFileNameBet,avgFileNameJson,parameter)		
 		sendToRaspiWeb(avgFileNameJson,'')
 
+		#Compute and send 7DayAvgHum files (.abet & .json)
+		dayAverage.humWeekAvg(dataFileName,oneWeekFileList)
+		jsonFileName='7DayAvgHum.json'
+		sendToRaspiWeb(jsonFileName,'')
 		
 		#create new bet file
 		today = time.strftime('%m-%d',time.localtime()) 
@@ -163,10 +168,13 @@ while True:
 	if receiver.available():
 		parameter.update()
 		received_value = receiver.getReceivedValue()
+		# print(received_value)
 	
 		if received_value:
 			##take picture
 			[fileName,filePath,photoTaken_flag] = cam.timeLapse_Photo(photoTaken_flag)
+			
+			
 			
 			#check if the received strhas the good length
 			received_value=str(received_value)

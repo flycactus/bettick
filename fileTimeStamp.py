@@ -25,9 +25,6 @@ def getTimeStamp():
 			betFile.close()
 	indexFile.close()
 	
-# def updateTimeStamp()
-	
-			
 def getFilesDayDiff(indexFile,file1,file2):
 ## find how many days between 2 files
 	DAY=86400
@@ -45,17 +42,16 @@ def getFilesDayDiff(indexFile,file1,file2):
 def oneWeekFiles(fileref,nbDays):
 ##find files nbdays day from fileref
 	DAY=86400
-	indexFile = open('dossierMeteo/index.txt','r')
+	indexFile = open('/home/cactus/bettick/dossierMeteo/index.txt','r')
 	OutFileList=[]
 	lineSpl=[]
 	##get ref time	
 	for lines in indexFile:
 		lineSpl.append(lines.split(':'))
-		# print(lineSpl[-1][0])
-		# print(fileref)
+		# print('{} - {}.'.format(lineSpl[-1][0],fileref))
 		if lineSpl[-1][0]==fileref:	
 			timeRef = float(lineSpl[-1][1])
-	
+			# print(str(timeRef)+'\n#######################')
 	##compare to ref time
 	for lines in lineSpl:
 		if not(lines[0]==fileref):
@@ -72,7 +68,7 @@ def NdaysDataMean(nbDays,fileRef,timePr):
 	MIN_TOT=1440
 	  
 	blockNb = np.round(MIN_TOT/timePr)
-	print(blockNb)
+	# print(blockNb)
 	
 	fileList = oneWeekFiles(fileRef,nbDays)
 	
@@ -113,7 +109,7 @@ def NdaysDataMean(nbDays,fileRef,timePr):
 		fileMean.write('\n')
 	fileMean.close()
 			
-			
+	return fileList	
 			
 			
 			

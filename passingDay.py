@@ -4,7 +4,7 @@ def isNewDay():
 	dayFile = open('dayfile.day','r')
 	lastDay = dayFile.readline()
 	dayFile.close()
-	today = time.strftime('%m-%d',time.localtime()) 
+	today = time.strftime('%Y-%m-%d',time.localtime()) 
 	if today != lastDay:
 		dayFile = open('dayfile.day','w')
 		dayFile.write(today)
