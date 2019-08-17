@@ -24,3 +24,6 @@ class ParameterClass():
 				
 			elif dataSpl[0] == 'sleepTime':
 				self.sleepTime = int(dataSpl[1])
+				
+			elif dataSpl[0] == 'hist_threshold':
+				self.hist_threshold = int(dataSpl[1])

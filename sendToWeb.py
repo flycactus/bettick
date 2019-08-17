@@ -6,7 +6,7 @@ Send data to raspi.sarno.fr
 from ftplib import FTP
 import os
 
-def sendToWeb(fileName,filePath):
+def sendToWeb(fileName,filePath,destPath=''):
 	id=open('../id','r')
 	idStr = id.read()
 	idStr = idStr.split(':')
@@ -14,9 +14,10 @@ def sendToWeb(fileName,filePath):
 	ftp = FTP(idStr[2])     # connect to host, default port
 	ftp.login(idStr[0],idStr[1])   
 
-	ftp.cwd('www')            
-	# ftp.retrlines('LIST')           # list directory contents
+	ftp.cwd('www')            	
 	ftp.cwd('raspi') 
+	# ftp.retrlines('LIST')           # list directory contents
+	ftp.cwd(destPath) 
 	upload(ftp,fileName,filePath)
 	# print 'transfert fini'
 	ftp.quit()
