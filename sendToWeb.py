@@ -10,7 +10,7 @@ def sendToWeb(fileName,filePath,destPath=''):
 	id=open('../id','r')
 	idStr = id.read()
 	idStr = idStr.split(':')
-	# print idStr
+	# print(idStr)
 	ftp = FTP(idStr[2])     # connect to host, default port
 	ftp.login(idStr[0],idStr[1])   
 
@@ -19,7 +19,7 @@ def sendToWeb(fileName,filePath,destPath=''):
 	# ftp.retrlines('LIST')           # list directory contents
 	ftp.cwd(destPath) 
 	upload(ftp,fileName,filePath)
-	# print 'transfert fini'
+	# print('transfert fini')
 	ftp.quit()
 
 def upload(ftp, fileName,filePath):

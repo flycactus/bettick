@@ -145,8 +145,10 @@ receiver = RCSwitchReceiver()
 receiver.enableReceive(2)
 
 
-# initialisation des erreurs
-fsock = open('errorLog.log', 'a')               
+## initialisation des erreurs
+
+# set error to be written in file
+fsock = open('errorLog.log', 'w')               
 sys.stderr = fsock       
 
 
@@ -204,7 +206,9 @@ while True:
 			#create new bet file
 			today = time.strftime('%Y-%m-%d',time.localtime()) 
 			dataFileName = 'dossierMeteo//'+today+'_meteo.bet'
-		except :	
+		except Exception as error:
+			print('{}'.format(error))
+			fsock.write('{}'.format(error))
 			pass
 		  
 	if receiver.available():
@@ -226,6 +230,7 @@ while True:
 				sensorData.histo[3]+=1
 				if parameter.disp==1:
 					print(sensorData)
+					print(dataFileName)
 				timeArray = time.time()
 				dataFile = open(dataFileName,'a+')
 				dataFormat = '{}:{}:{}:{}\n'.format(timeArray,sensorData.dayTemperature,sensorData.dayHumidity,sensorData.earthHumidity)
@@ -243,6 +248,10 @@ while True:
 				time.sleep(SLEEPING_TIME)
 				if parameter.disp==1:
 					print('STOP SLEEP')
+			
+
+			
+			
 			time.sleep(0.1)
 
 	now = time.strftime('%H',time.localtime())       
