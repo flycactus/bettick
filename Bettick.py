@@ -17,6 +17,7 @@ import sys
 import fileTimeStamp as fts
 import struct
 import ultraSound 
+import tcp_client
 
 # initialisation des parametres
 parameter = param.ParameterClass()
@@ -207,7 +208,7 @@ while True:
 			today = time.strftime('%Y-%m-%d',time.localtime()) 
 			dataFileName = 'dossierMeteo//'+today+'_meteo.bet'
 		except Exception as error:
-			print('{}'.format(error))
+			# print('{}'.format(error))
 			fsock.write('{}'.format(error))
 			pass
 		  
@@ -238,10 +239,17 @@ while True:
 				dataFile.close()
 				## jsonize today file
 				json.parseData(dataFileName,'meteo.json',parameter)
-				sensorData.reinit()
+				
 				
 				## send to web
-				sendToRaspiWeb('meteo.json','')
+				try :
+					sendToRaspiWeb('meteo.json','')
+					now = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime()) 
+					# print(now,sensorData.dayTemperature,sensorData.dayHumidity)
+					tcp_client.postToWeb(now,sensorData.dayTemperature,sensorData.dayHumidity,1)
+				except:
+					pass
+				sensorData.reinit()
 				
 				if parameter.disp==1:
 					print('START SLEEP')
@@ -270,6 +278,8 @@ while True:
 		# GPIO.cleanup()	
 	short_sleep_cnt+=1
 	time.sleep(SHORT_SLEEPING_TIME)
+	if short_sleep_cnt%10 == 0:
+		parameter.update()
 	if parameter.disp==1:
 		if short_sleep_cnt%10 == 0:
 			print('{} times SHORT_SLEEP'.format(short_sleep_cnt))
