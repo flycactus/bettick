@@ -1,0 +1,5 @@
+avgSize=15
+offlimit=100
+disp=0
+sleepTime=1
+hist_threshold=200000

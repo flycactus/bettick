@@ -18,7 +18,6 @@ import fileTimeStamp as fts
 import struct
 import ultraSound 
 import tcp_client
-import tcp_server
 
 # initialisation des parametres
 parameter = param.ParameterClass()
@@ -137,44 +136,9 @@ def sendToRaspiWeb(fileName,filePath,destPath=''):
 		log.close()
 	# print('sleep '+time.strftime('%H:%M:%S',time.localtime()))
 
-def radio_sensor(receiver,parameter,sensorData): 
-	if receiver.available():
-		parameter.update()
-		received_value = receiver.getReceivedValue()
-		
-		if received_value:
-		
-			short_sleep_cnt = 0
-			
-			## upgrade total received_value
-			sensorData.histo[4]+=1
-			
-			##decode the data and check its integrity
-			[sensorData,valid] = decode(received_value,sensorData)
-			
-			if valid==1 and sensorData.dataComplete==1: 
-				## upgrade total validated value
-				sensorData.histo[3]+=1
-				if parameter.disp==1:
-					print(sensorData)
-					print(dataFileName)
+	
 
-				## send to web
-				try :
-					now = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime()) 
-					tcp_client.postToWeb(now,sensorData.dayTemperature,sensorData.dayHumidity,1)
-				except:
-					pass
-				sensorData.reinit()
-				
-				if parameter.disp==1:
-					print('START SLEEP')
-				time.sleep(SLEEPING_TIME)
-				if parameter.disp==1:
-					print('STOP SLEEP')
-			time.sleep(0.1)
-			
-			
+
 ################ Initialization ###################
 
 # initialization radio
@@ -218,13 +182,100 @@ if parameter.disp==1:
 
 while True: 
 	
-	if parameter.live_exit == 1:
-		print('Exiting Bettick') 
-		parameter.change_value('live_exit',0)
-		sys.exit()
-	
-	radio_sensor(receiver,parameter,sensorData)
- 
+	if isNewDay():
+		try:
+			#create archive json file
+			jsonFileName='dossierMeteo/'+today+'_meteo.json'
+			copyfile('meteo.json', jsonFileName) 
+			sensorData.reinitStat()
+			
+			#compute last week file
+			fts.getTimeStamp()
+			NbofDays = 7
+			TimePrecision = 10   
+			oneWeekFileList = fts.NdaysDataMean(NbofDays,today+'_meteo.bet',TimePrecision)
+			avgFileNameBet = 'dossierMeteo//{}DaysAvg_meteo.abet'.format(NbofDays)
+			avgFileNameJson= '{}DaysAvg_meteo.json'.format(NbofDays)
+			json.parseData(avgFileNameBet,avgFileNameJson,parameter)		
+			sendToRaspiWeb(avgFileNameJson,'')
+
+			#Compute and send 7DayAvgHum files (.abet & .json)
+			dayAverage.humWeekAvg(dataFileName,oneWeekFileList)
+			jsonFileName='7DayAvgHum.json'
+			sendToRaspiWeb(jsonFileName,'')
+			
+			#create new bet file
+			today = time.strftime('%Y-%m-%d',time.localtime()) 
+			dataFileName = 'dossierMeteo//'+today+'_meteo.bet'
+		except Exception as error:
+			# print('{}'.format(error))
+			fsock.write('{}'.format(error))
+			pass
+		  
+	if receiver.available():
+		parameter.update()
+		received_value = receiver.getReceivedValue()
+		
+		if received_value:
+		
+			short_sleep_cnt = 0
+			
+			## upgrade total received_value
+			sensorData.histo[4]+=1
+			
+			##decode the data and check its integrity
+			[sensorData,valid] = decode(received_value,sensorData)
+			
+			if valid==1 and sensorData.dataComplete==1: 
+				## upgrade total validated value
+				sensorData.histo[3]+=1
+				if parameter.disp==1:
+					print(sensorData)
+					print(dataFileName)
+				timeArray = time.time()
+				dataFile = open(dataFileName,'a+')
+				dataFormat = '{}:{}:{}:{}\n'.format(timeArray,sensorData.dayTemperature,sensorData.dayHumidity,sensorData.earthHumidity)
+				dataFile.write(dataFormat)
+				dataFile.close()
+				## jsonize today file
+				json.parseData(dataFileName,'meteo.json',parameter)
+				
+				
+				## send to web
+				try :
+					sendToRaspiWeb('meteo.json','')
+					now = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime()) 
+					# print(now,sensorData.dayTemperature,sensorData.dayHumidity)
+					tcp_client.postToWeb(now,sensorData.dayTemperature,sensorData.dayHumidity,1)
+				except:
+					pass
+				sensorData.reinit()
+				
+				if parameter.disp==1:
+					print('START SLEEP')
+				time.sleep(SLEEPING_TIME)
+				if parameter.disp==1:
+					print('STOP SLEEP')
+			
+
+			
+			
+			time.sleep(0.1)
+
+	now = time.strftime('%H',time.localtime())       
+
+	# print('test Pic')
+	# try :
+		# if int(now) < 20 and int(now) > 6: 
+			# parameter.update()	
+			# trigPic_name = cam.triggeredPic(parameter)
+			# if trigPic_name != 0:
+				# sendToRaspiWeb(trigPic_name,'/home/cactus/bettick/photo/','trigPic') 
+				# if parameter.disp==1:
+					# print('photo triggerered')
+	# except KeyboardInterrupt:
+		# print("Measurement stopped by User")
+		# GPIO.cleanup()	
 	short_sleep_cnt+=1
 	time.sleep(SHORT_SLEEPING_TIME)
 	if short_sleep_cnt%10 == 0:
@@ -233,3 +284,17 @@ while True:
 		if short_sleep_cnt%10 == 0:
 			print('{} times SHORT_SLEEP'.format(short_sleep_cnt))
 	
+	##take picture
+	# [fileName,filePath,photoTaken_flag] = cam.timeLapse_Photo(photoTaken_flag)
+	
+	## GIF
+	
+	# if now == '21':					
+		# cam.makeGif()
+		# sendToRaspiWeb('animation.gif','') 
+		# sendToRaspiWeb('animation12.gif','')
+		
+		# receiver.resetAvailable()
+	
+	# time.sleep(SLEEPING_TIME)
+	# time.sleep(0.0)
